@@ -28,3 +28,24 @@ jobs:
       # 5. Push the built image to your Docker Hub repository
       - name: push Docker Hub
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/my-react-app
+
+        # 6. Log in to AWS using the secrets created in Step 1
+      - name: login to AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          aws-access-key-id: ${{ secrets.ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.SECRET_KEY }}
+
+      # 7. Update Task Definition and Deploy to ECS 
+      - name: deploy to ecs
+        run: |
+          # Download current Task Definition and change the image to the new one
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition "devops-final-groject")
+          NEW_TASK_DEF=$(echo "$TASK_DEF" | jq --arg img "${{ secrets.DOCKERHUB_USERNAME }}/my-react-app:latest" '.taskDefinition | .containerDefinitions[0].image = $img | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+
+          # Register New Revision in AWS
+          NEW_TASK_INFO=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF")
+          
+          # Update Service to use the newly registered revision
+          aws ecs update-service --cluster "my-react-cluster" --service "devops-final-groject-service-ys87a1rj" --task-definition "devops-final-groject"
