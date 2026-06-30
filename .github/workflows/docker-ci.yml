@@ -1,34 +1,30 @@
-name: Build and Push to Docker Hub
+name: new-ci
 
-# The workflow will run automatically on every push to main or master branches
 on:
   push:
-    branches: [ "main", "master" ]
+  pull_request:
+  workflow_dispatch:
 
 jobs:
-  build-and-push:
+  build-push:
     runs-on: ubuntu-latest
-
     steps:
-    # 1. Checkout the repository code to the GitHub runner
-    - name: Checkout code
-      uses: actions/checkout@v4
+      # 1. Checkout the code from GitHub
+      - name: checkout code
+        uses: actions/checkout@v4
 
-    # 2. Log in to Docker Hub using GitHub Repository Secrets
-    - name: Log in to Docker Hub
-      run: docker login -u ${{ secrets.DOCKERHUB_USERNAME } -p ${{ secrets.DOCKERHUB_TOKEN }}}
+      # 2. Build the docker image from the clientapp folder using your secret username
+      - name: build docker image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/my-react-app ./clientapp
 
-    # 3. Build the Docker image and push it to Docker Hub
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        # Build context points to the clientapp directory containing the source files
-        context: ./clientapp
-        # Path to the specific Dockerfile
-        file: ./clientapp/Dockerfile
-        # Automatically push the built image to the registry
-        push: true
-        # Tag the image with 'latest' and the specific git commit SHA
-        tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/my-react-app:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/my-react-app:${{ github.sha }}
+      # 3. List local docker images to verify the build
+      - name: list images
+        run: docker images
+
+      # 4. Log in to Docker Hub using repository secrets
+      - name: docker login
+        run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 5. Push the built image to your Docker Hub repository
+      - name: push Docker Hub
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/my-react-app
