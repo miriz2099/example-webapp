@@ -1,0 +1,37 @@
+name: Build and Push to Docker Hub
+
+# The workflow will run automatically on every push to main or master branches
+on:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout the repository code to the GitHub runner
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. Log in to Docker Hub using GitHub Repository Secrets
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    # 3. Build the Docker image and push it to Docker Hub
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        # Build context points to the clientapp directory containing the source files
+        context: ./clientapp
+        # Path to the specific Dockerfile
+        file: ./clientapp/Dockerfile
+        # Automatically push the built image to the registry
+        push: true
+        # Tag the image with 'latest' and the specific git commit SHA
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/my-react-app:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/my-react-app:${{ github.sha }}
